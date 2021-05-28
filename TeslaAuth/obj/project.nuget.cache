@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "76UsV+zpdODsMSfsnOx6wEc8ZSA9Vb9KJVXasadz4+4oXriuEUIbkiKPQgqBymEvXormk/EFHR/nKfCiBxZ/IQ==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\KH\\Documents\\GitHub\\AuthForTeslaDroid\\TeslaAuth\\TeslaAuth.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\KH\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder\\netstandard.library\\2.0.3\\netstandard.library.2.0.3.nupkg.sha512",
+    "C:\\Users\\KH\\.nuget\\packages\\newtonsoft.json\\12.0.3\\newtonsoft.json.12.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -8,12 +8,19 @@ using AndroidX.AppCompat.App;
 using Google.Android.Material.FloatingActionButton;
 using Google.Android.Material.Snackbar;
 using TeslaAuth;
+using Android.Webkit;
+using System.Threading.Tasks;
+using Android.Graphics;
+using System.Web;
 
 namespace AuthForTeslaDroid
 {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme.NoActionBar", MainLauncher = true)]
     public class MainActivity : AppCompatActivity
     {
+        WebView web_view;
+        HelloWebViewClient client = new HelloWebViewClient();
+
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
@@ -26,21 +33,43 @@ namespace AuthForTeslaDroid
             var tokensForm = FindViewById<Android.Widget.LinearLayout>(Resource.Id.tokensForm);
             tokensForm.Visibility = ViewStates.Gone;
 
+            var webviewForm = FindViewById<Android.Widget.LinearLayout>(Resource.Id.webviewForm);
+            webviewForm.Visibility = ViewStates.Gone;
+
             var login = FindViewById<AppCompatButton>(Resource.Id.login);
             login.Click += Login_Click;
+
+            web_view = FindViewById<WebView>(Resource.Id.webview);
+            web_view.Settings.JavaScriptEnabled = true;
+            web_view.SetWebViewClient(client);
+            web_view.LoadUrl("about:blank");
         }
+
 
         private async void Login_Click(object sender, EventArgs e)
         {
-            var username = FindViewById<AppCompatEditText>(Resource.Id.username);
-            var password = FindViewById<AppCompatEditText>(Resource.Id.password);
-            var mfaCode = FindViewById<AppCompatEditText>(Resource.Id.mfaCode);
             var accessToken = FindViewById<AppCompatTextView>(Resource.Id.accessToken);
             var refreshToken = FindViewById<AppCompatTextView>(Resource.Id.refreshToken);
 
             // When it's time to authenticate:
             var authHelper = new TeslaAuthHelper("AuthForTeslaDroid/1.0");
-            var tokens = await authHelper.AuthenticateAsync(username.Text, password.Text, mfaCode.Text);
+
+            var tokens = await authHelper.AuthenticateAsync(async (codeUrl, cancellationToken) =>
+            {
+                var webviewForm = FindViewById<Android.Widget.LinearLayout>(Resource.Id.webviewForm);
+                webviewForm.Visibility = ViewStates.Visible;
+
+                Console.WriteLine(codeUrl);
+                web_view.ClearCache(true);
+                web_view.ClearHistory();
+                CookieManager.Instance.RemoveAllCookies(null);
+                CookieManager.Instance.Flush();
+                web_view.LoadUrl(codeUrl);
+                var code = await WaitForCode();
+
+                webviewForm.Visibility = ViewStates.Gone;
+                return code;
+            });
 
             accessToken.Text = tokens.AccessToken;
             refreshToken.Text = tokens.RefreshToken;
@@ -51,6 +80,22 @@ namespace AuthForTeslaDroid
             var loginForm = FindViewById<Android.Widget.LinearLayout>(Resource.Id.loginForm);
             loginForm.Visibility = ViewStates.Gone;
 
+        }
+
+        private Task<string> WaitForCode()
+        {
+            return Task.Run(() =>
+            {
+                while (true)
+                {
+                    if (client.authCode != null)
+                    {
+                        var code = client.authCode;
+                        client.authCode = null;
+                        return code;
+                    }
+                }
+            });
         }
 
         public override bool OnCreateOptionsMenu(IMenu menu)
@@ -83,5 +128,27 @@ namespace AuthForTeslaDroid
 
             base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
-	}
+            
+        public class HelloWebViewClient : WebViewClient
+        {
+            public string authCode = null;
+
+            // For API level 24 and later
+            public override bool ShouldOverrideUrlLoading(WebView view, IWebResourceRequest request)
+            {
+                view.LoadUrl(request.Url.ToString());
+
+                Console.WriteLine(request.Url);
+                try
+                {
+                    authCode = HttpUtility.ParseQueryString(request.Url.Query).Get("code");
+                }
+                catch (Exception)
+                {
+                }
+
+                return false;
+            }
+        }
+    }
 }
